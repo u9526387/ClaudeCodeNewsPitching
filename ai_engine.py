@@ -62,6 +62,8 @@ International Cut: <YES or NO. Be very strict — only YES if ALL three apply: (
 
 International Reason: <if YES, exactly one sentence explaining the specific cross-border consequence that makes this globally relevant; if NO, leave blank>
 
+Jerry says: <You are Jerry, a sharp and experienced TV news producer. Give 3 specific, actionable ways to develop this story further. Think like a producer — suggest: (1) a specific person or institution worth interviewing and why, (2) a specific Taiwan industry, sector, or community that would be visibly impacted and how to show it, (3) a fresh angle, contrast, or narrative device that would make this story more compelling for an international audience. Be concrete, not generic. Write as a short paragraph in first person, conversational tone.>
+
 Source headline: {title}
 Source summary: {summary}"""
 
@@ -74,15 +76,20 @@ Source summary: {summary}"""
     zh_summary = ""
     international_cut = False
     international_reason = ""
+    jerry_says = ""
+    jerry_lines = []
+    in_jerry = False
 
     for i, line in enumerate(lines):
         if line.startswith("Category:"):
+            in_jerry = False
             cat_raw = line.replace("Category:", "").strip().strip("[]")
             for cat in CATEGORIES:
                 if cat.lower() in cat_raw.lower():
                     category = cat
                     break
         elif any(line.startswith(f"[{c}]") for c in CATEGORIES):
+            in_jerry = False
             matched = next(c for c in CATEGORIES if line.startswith(f"[{c}]"))
             if len(line) > len(f"[{matched}]") + 2:
                 headline = line
@@ -91,13 +98,26 @@ Source summary: {summary}"""
                 headline = f"[{matched}] {lines[i + 1]}"
                 category = matched
         elif line.startswith("Significance:"):
+            in_jerry = False
             significance = line.replace("Significance:", "").strip()
         elif line.startswith("Traditional Chinese Summary:"):
+            in_jerry = False
             zh_summary = line.replace("Traditional Chinese Summary:", "").strip()
         elif line.startswith("International Cut:"):
+            in_jerry = False
             international_cut = "yes" in line.lower()
         elif line.startswith("International Reason:"):
+            in_jerry = False
             international_reason = line.replace("International Reason:", "").strip()
+        elif line.startswith("Jerry says:"):
+            in_jerry = True
+            rest = line.replace("Jerry says:", "").strip()
+            if rest:
+                jerry_lines.append(rest)
+        elif in_jerry and line:
+            jerry_lines.append(line)
+
+    jerry_says = " ".join(jerry_lines).strip()
 
     return {
         "category": category,
@@ -106,6 +126,7 @@ Source summary: {summary}"""
         "zh_summary": zh_summary,
         "international_cut": international_cut,
         "international_reason": international_reason,
+        "jerry_says": jerry_says,
         "formatted": (
             f"Story  {today}\n\n"
             f"{headline or f'[{category}] {title}'}\n\n"

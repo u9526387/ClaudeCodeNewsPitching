@@ -2,9 +2,12 @@ import os
 import streamlit as st
 import streamlit_authenticator as stauth
 from dotenv import load_dotenv
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from scraper import fetch_stories
 from ai_engine import process_stories
+
+TAIWAN_TZ = timezone(timedelta(hours=8))
+AUTO_REFRESH_HOUR = 20  # 8pm Taiwan time
 
 load_dotenv()
 
@@ -213,6 +216,18 @@ with st.sidebar:
     st.markdown("---")
     refresh = st.button("↻  Refresh News", use_container_width=True)
 
+    # Auto-refresh info
+    tw_now = datetime.now(TAIWAN_TZ)
+    next_refresh = tw_now.replace(hour=AUTO_REFRESH_HOUR, minute=0, second=0, microsecond=0)
+    if tw_now.hour >= AUTO_REFRESH_HOUR:
+        next_refresh += timedelta(days=1)
+    hrs_until = int((next_refresh - tw_now).total_seconds() // 3600)
+    mins_until = int(((next_refresh - tw_now).total_seconds() % 3600) // 60)
+    st.markdown(f"""
+    <div style='font-size:0.62rem;color:#333;letter-spacing:0.08em;padding-top:0.4rem;'>
+    Auto-refresh at 8pm Taiwan time<br>Next: {hrs_until}h {mins_until}m
+    </div>""", unsafe_allow_html=True)
+
     st.markdown("---")
     authenticator.logout("Logout", "sidebar")
 
@@ -263,6 +278,19 @@ def copy_button(pitch_text: str, key: str):
     st.components.v1.html(html, height=50)
 
 
+# ── Auto-refresh at 8pm Taiwan time ───────────────────────────────────────────
+def _should_auto_refresh() -> bool:
+    tw_now = datetime.now(TAIWAN_TZ)
+    if tw_now.hour < AUTO_REFRESH_HOUR:
+        return False
+    last = st.session_state.get("last_auto_refresh_date")
+    today_str = tw_now.strftime("%Y-%m-%d")
+    return last != today_str
+
+if _should_auto_refresh():
+    st.session_state.last_auto_refresh_date = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d")
+    refresh = True
+
 # ── Session state / data loading ──────────────────────────────────────────────
 if "pitches" not in st.session_state or refresh:
     with st.spinner("Fetching and analysing stories..."):
@@ -270,21 +298,30 @@ if "pitches" not in st.session_state or refresh:
         if not raw:
             raw = _fallback_stories()
         st.session_state.pitches = process_stories(raw[:10])
-    st.session_state.fetch_time = date.today().strftime("%B %d, %Y")
+    st.session_state.fetch_time = datetime.now(TAIWAN_TZ).strftime("%B %d, %Y — %H:%M Taiwan time")
 
 
 # ── Main feed ─────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<div style='padding:0.4rem 0 1.8rem 0;'>
-  <span style='font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;color:#FFF;'>
-    Today's Pitches
-  </span>
-  <span style='font-size:0.7rem;color:#444;letter-spacing:0.1em;
-  text-transform:uppercase;margin-left:1rem;'>
-    {st.session_state.get("fetch_time", "")}
-  </span>
-</div>
-""", unsafe_allow_html=True)
+col_title, col_btn = st.columns([5, 1])
+with col_title:
+    st.markdown(f"""
+    <div style='padding:0.4rem 0 0.4rem 0;'>
+      <span style='font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;color:#FFF;'>
+        Today's Pitches
+      </span>
+      <span style='font-size:0.7rem;color:#444;letter-spacing:0.1em;
+      text-transform:uppercase;margin-left:1rem;'>
+        {st.session_state.get("fetch_time", "")}
+      </span>
+    </div>
+    """, unsafe_allow_html=True)
+with col_btn:
+    st.markdown("<div style='padding-top:0.5rem;'>", unsafe_allow_html=True)
+    if st.button("↻ Refresh", key="main_refresh", use_container_width=True):
+        st.session_state.pop("pitches", None)
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom:1.4rem;'></div>", unsafe_allow_html=True)
 
 pitches = [p for p in st.session_state.pitches if p.get("category") in selected_cats]
 if st.session_state.get("intl_only"):
@@ -333,6 +370,19 @@ def render_pitch(pitch, idx):
     </div>
     """, unsafe_allow_html=True)
     copy_button(formatted_text, key=f"copy_{idx}_{cat}")
+
+    jerry = pitch.get("jerry_says", "")
+    if jerry:
+        with st.expander("💡 How to develop this story"):
+            st.markdown(f"""
+            <div style='background:#0F0F0F;border:1px solid #1E1E1E;border-radius:8px;
+            padding:1rem 1.2rem;margin-top:0.2rem;'>
+              <span style='font-size:0.65rem;font-weight:700;letter-spacing:0.15em;
+              text-transform:uppercase;color:#555;'>Jerry says</span>
+              <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.7;margin-top:0.5rem;
+              margin-bottom:0;'>{jerry}</p>
+            </div>
+            """, unsafe_allow_html=True)
     st.markdown("")
 
 
