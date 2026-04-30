@@ -7,48 +7,64 @@ APP_NAME = "lovepitchingpolar"
 
 CATEGORIES = ["Politics", "Diplomacy", "Security", "Human Rights", "Society", "Economy"]
 
-# Few-shot examples to anchor tone and style
-FEW_SHOT_EXAMPLES = """
-Example 1:
-Story: Taiwan's foreign minister meets EU counterparts in Brussels to discuss trade resilience amid China pressure.
-Category: [Diplomacy]
-Significance: As China ramps up economic coercion against nations that engage with Taiwan, this meeting signals that democratic allies are quietly building a parallel diplomatic network — one that Beijing cannot easily sanction or block. For global trade partners, Taiwan's ability to maintain these back-channel relationships is a bellwether for how the rules-based order holds up under pressure.
+# Fingerprints of few-shot example content — used to detect echo contamination
+_EXAMPLE_FINGERPRINTS = [
+    "tug-of-war over where tsmc builds",
+    "台積電宣布亞利桑那新廠延期",
+    "back-channel relationships is a bellwether",
+    "台灣外交部長赴布魯塞爾",
+    "compressing the timeline for a potential conflict",
+    "中國人民解放軍在台灣海峽附近舉行實彈演習",
+]
+
+# Tone reference — shown as a system message, not in the user turn
+_SYSTEM_TONE = """You are a senior producer at Story, an international English-language broadcaster based in Taiwan.
+
+Here are three examples of the TONE and FORMAT you must follow. These are only tone references — do NOT copy or repeat them in your output under any circumstances:
+
+[TONE EXAMPLE 1 — Diplomacy]
+Significance: As China ramps up economic coercion against nations that engage with Taiwan, this meeting signals that democratic allies are quietly building a parallel diplomatic network — one Beijing cannot easily sanction or block.
 Traditional Chinese Summary: 台灣外交部長赴布魯塞爾與歐盟官員會面，雙方就抵禦中國貿易施壓的韌性策略進行深入討論。
 
-Example 2:
-Story: PLA conducts live-fire drills near the Taiwan Strait, deploying destroyer fleet in simulated blockade exercise.
-Category: [Security]
-Significance: Beijing's increasingly frequent and sophisticated military exercises around Taiwan are no longer just political theater — defence analysts say the drills are rehearsals, compressing the timeline for a potential conflict that would disrupt $5 trillion in annual global shipping and trigger a semiconductor supply crisis worldwide.
-Traditional Chinese Summary: 中國人民解放軍在台灣海峽附近舉行實彈演習，以驅逐艦艦隊模擬封鎖行動，引發國際社會高度關注。
+[TONE EXAMPLE 2 — Security]
+Significance: Beijing's increasingly frequent military exercises around Taiwan are no longer just political theater — analysts say the drills are rehearsals compressing the timeline for a conflict that would disrupt $5 trillion in annual global shipping.
+Traditional Chinese Summary: 中國人民解放軍在台灣海峽附近舉行實彈演習，引發國際社會高度關注。
 
-Example 3:
-Story: TSMC announces new Arizona fab delay as Taiwan government urges the company to keep advanced nodes onshore.
-Category: [Economy]
-Significance: The tug-of-war over where TSMC builds its most advanced chips cuts to the heart of a global debate: can the world de-risk its semiconductor supply chain without hollowing out the very island that produces 90% of the most cutting-edge chips? Taiwan's answer — and America's response — will shape the tech industry for a generation.
-Traditional Chinese Summary: 台積電宣布亞利桑那新廠延期，台灣政府同時呼籲公司將最先進製程留在台灣本土生產。
-"""
+[TONE EXAMPLE 3 — Economy]
+Significance: The question of where cutting-edge chips are manufactured is no longer just a business decision — it is a test of whether the global tech supply chain can survive without Taiwan at its centre.
+Traditional Chinese Summary: 全球科技供應鏈的未來，繫於台灣能否守住半導體製造的核心地位。
+
+END OF TONE EXAMPLES. Everything below is a NEW story that has nothing to do with the examples above."""
 
 
-def _chat(prompt: str) -> str:
+def _chat(title: str, summary: str, prompt_body: str) -> str:
+    """Two-turn chat: system sets tone context, user presents the actual story task."""
     client = ollama.Client(host=OLLAMA_HOST)
     response = client.chat(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0.3},
+        messages=[
+            {"role": "user",      "content": _SYSTEM_TONE},
+            {"role": "assistant", "content": "Understood. I will use those only as tone references and generate completely original output for the new story you provide."},
+            {"role": "user",      "content": f"{prompt_body}\n\nSource headline: {title}\nSource summary: {summary}"},
+        ],
+        options={"temperature": 0.4},
     )
     return response["message"]["content"].strip()
+
+
+def _is_contaminated(text: str) -> bool:
+    """Return True if the output appears to echo few-shot example content."""
+    t = text.lower()
+    return any(fp in t for fp in _EXAMPLE_FINGERPRINTS)
 
 
 def process_single_story(title: str, summary: str) -> dict:
     """Single Ollama call: classify + format pitch in one shot."""
     today = date.today().strftime("%B %d, %Y")
     cats = ", ".join(CATEGORIES)
-    prompt = f"""You are a senior producer at Story, an international English-language broadcaster based in Taiwan.
+    prompt = f"""Process the story provided at the end of this message. Generate COMPLETELY ORIGINAL content based ONLY on that story — do not reference or copy the tone examples you were shown.
 
-Study these pitch examples for tone and format:
-{FEW_SHOT_EXAMPLES}
-
-Now process this story in ONE response. Follow the format EXACTLY — no extra text before or after:
+Follow the format EXACTLY — no extra text before or after:
 
 Category: <one of: {cats}>
 
@@ -64,12 +80,15 @@ International Reason: <if YES, exactly one sentence explaining the specific cros
 
 Jerry today: <You are Jerry, a veteran TV reporter in Taiwan. A reporter has ONE DAY to develop THIS specific story. Give 2–3 concrete actions tied directly to the details of this story — name the specific people worth calling (by role, institution, or name if obvious from the story), identify the exact location or community to visit to find a human face for the story, and point to one piece of data or document the reporter could pull today to add depth. Do NOT give generic advice. Every suggestion must be directly traceable back to the specific facts in this story.>
 
-Jerry feature: <Still as Jerry. Now think bigger — what long-form feature or investigative angle does this story open up? Suggest one specific multi-week story a reporter could pursue: which industry or community in Taiwan would be most visibly transformed by the forces behind this story, what structural trend or policy gap does it expose, and what would the narrative spine of the feature look like (e.g. follow one company, one family, one official decision over time). Be specific to this story's details, not generic journalism advice.>
+Jerry feature: <Still as Jerry. Now think bigger — what long-form feature or investigative angle does this story open up? Suggest one specific multi-week story a reporter could pursue: which industry or community in Taiwan would be most visibly transformed by the forces behind this story, what structural trend or policy gap does it expose, and what would the narrative spine of the feature look like (e.g. follow one company, one family, one official decision over time). Be specific to this story's details, not generic journalism advice.>"""
 
-Source headline: {title}
-Source summary: {summary}"""
+    raw = _chat(title, summary, prompt)
 
-    raw = _chat(prompt)
+    # Retry once if output appears to echo example content rather than this story
+    if _is_contaminated(raw):
+        print(f"  [retry] Contaminated output detected for: {title[:50]}")
+        raw = _chat(title, summary, prompt)
+
     lines = [l.strip() for l in raw.strip().splitlines()]
 
     category = "Society"
