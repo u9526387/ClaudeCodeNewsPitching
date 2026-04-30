@@ -376,29 +376,43 @@ def render_pitch(pitch, idx):
     if jerry_today or jerry_feature:
         with st.expander("💡 Jerry says: How to develop this story"):
             if jerry_today:
-                st.markdown(f"""
-                <div style='background:#0F0F0F;border:1px solid #1E2E1E;border-radius:8px;
-                padding:1rem 1.2rem;margin-bottom:0.8rem;'>
-                  <div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;
-                  text-transform:uppercase;color:#4CAF50;margin-bottom:0.5rem;'>
-                  ⚡ Today — What you can do right now
-                  </div>
-                  <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.75;
-                  margin:0;'>{jerry_today}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    "<div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;"
+                    "text-transform:uppercase;color:#4CAF50;margin-bottom:0.4rem;'>"
+                    "⚡ Today — What you can do right now</div>",
+                    unsafe_allow_html=True,
+                )
+                # Render each bullet as a styled markdown block
+                bullets = [b.strip() for b in jerry_today.replace("• ", "\n• ").split("\n") if b.strip().startswith("•")]
+                if not bullets:
+                    bullets = [jerry_today]
+                for b in bullets:
+                    text = b.lstrip("•").strip()
+                    st.markdown(
+                        f"<div style='background:#0F0F0F;border:1px solid #1E2E1E;"
+                        f"border-radius:6px;padding:0.7rem 1rem;margin-bottom:0.5rem;"
+                        f"font-size:0.86rem;color:#C0C0C0;line-height:1.7;'>{text}</div>",
+                        unsafe_allow_html=True,
+                    )
+
             if jerry_feature:
-                st.markdown(f"""
-                <div style='background:#0F0F0F;border:1px solid #1E1A2E;border-radius:8px;
-                padding:1rem 1.2rem;'>
-                  <div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;
-                  text-transform:uppercase;color:#A78BFA;margin-bottom:0.5rem;'>
-                  🔭 Long-term — Feature story to pursue
-                  </div>
-                  <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.75;
-                  margin:0;'>{jerry_feature}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    "<div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;"
+                    "text-transform:uppercase;color:#A78BFA;margin:0.8rem 0 0.4rem 0;'>"
+                    "🔭 Long-term — Feature story to pursue</div>",
+                    unsafe_allow_html=True,
+                )
+                bullets = [b.strip() for b in jerry_feature.replace("• ", "\n• ").split("\n") if b.strip().startswith("•")]
+                if not bullets:
+                    bullets = [jerry_feature]
+                for b in bullets:
+                    text = b.lstrip("•").strip()
+                    st.markdown(
+                        f"<div style='background:#0F0F0F;border:1px solid #1E1A2E;"
+                        f"border-radius:6px;padding:0.7rem 1rem;margin-bottom:0.5rem;"
+                        f"font-size:0.86rem;color:#C0C0C0;line-height:1.7;'>{text}</div>",
+                        unsafe_allow_html=True,
+                    )
     st.markdown("")
 
 
