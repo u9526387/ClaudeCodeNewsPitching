@@ -159,7 +159,7 @@ st.markdown("""
 
 
 # ── Auth setup ────────────────────────────────────────────────────────────────
-hashed_pw = stauth.Hasher([APP_PASSWORD]).generate()[0]
+hashed_pw = stauth.Hasher.hash(APP_PASSWORD)
 
 credentials = {
     "usernames": {
