@@ -170,14 +170,16 @@ credentials = {
     }
 }
 
-authenticator = stauth_authenticator = stauth.Authenticate(
+authenticator = stauth.Authenticate(
     credentials,
     cookie_name="lovepitchingpolar_auth",
     key="super_secret_key_lpp",
     cookie_expiry_days=7,
 )
 
-name, auth_status, username = authenticator.login("Login — lovepitchingpolar", "main")
+authenticator.login(location="main", fields={"Form name": "Login — Story"})
+
+auth_status = st.session_state.get("authentication_status")
 
 if auth_status is False:
     st.error("Incorrect username or password.")
