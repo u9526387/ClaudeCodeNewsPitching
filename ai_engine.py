@@ -62,7 +62,9 @@ International Cut: <YES or NO. Be very strict — only YES if ALL three apply: (
 
 International Reason: <if YES, exactly one sentence explaining the specific cross-border consequence that makes this globally relevant; if NO, leave blank>
 
-Jerry says: <You are Jerry, a sharp and experienced TV news producer. Give 3 specific, actionable ways to develop this story further. Think like a producer — suggest: (1) a specific person or institution worth interviewing and why, (2) a specific Taiwan industry, sector, or community that would be visibly impacted and how to show it, (3) a fresh angle, contrast, or narrative device that would make this story more compelling for an international audience. Be concrete, not generic. Write as a short paragraph in first person, conversational tone.>
+Jerry today: <You are Jerry, a veteran TV reporter in Taiwan. A reporter has ONE DAY to develop THIS specific story. Give 2–3 concrete actions tied directly to the details of this story — name the specific people worth calling (by role, institution, or name if obvious from the story), identify the exact location or community to visit to find a human face for the story, and point to one piece of data or document the reporter could pull today to add depth. Do NOT give generic advice. Every suggestion must be directly traceable back to the specific facts in this story.>
+
+Jerry feature: <Still as Jerry. Now think bigger — what long-form feature or investigative angle does this story open up? Suggest one specific multi-week story a reporter could pursue: which industry or community in Taiwan would be most visibly transformed by the forces behind this story, what structural trend or policy gap does it expose, and what would the narrative spine of the feature look like (e.g. follow one company, one family, one official decision over time). Be specific to this story's details, not generic journalism advice.>
 
 Source headline: {title}
 Source summary: {summary}"""
@@ -76,20 +78,34 @@ Source summary: {summary}"""
     zh_summary = ""
     international_cut = False
     international_reason = ""
-    jerry_says = ""
-    jerry_lines = []
-    in_jerry = False
+
+    # Multi-line field collector
+    current_field = None
+    field_buffers = {
+        "jerry_today": [],
+        "jerry_feature": [],
+    }
+
+    FIELD_MARKERS = {
+        "Significance:":                  "significance_inline",
+        "Traditional Chinese Summary:":   "zh_inline",
+        "International Cut:":             "intl_cut_inline",
+        "International Reason:":          "intl_reason_inline",
+        "Jerry today:":                   "jerry_today",
+        "Jerry feature:":                 "jerry_feature",
+    }
 
     for i, line in enumerate(lines):
+        # Category and headline are single-line, handle first
         if line.startswith("Category:"):
-            in_jerry = False
+            current_field = None
             cat_raw = line.replace("Category:", "").strip().strip("[]")
             for cat in CATEGORIES:
                 if cat.lower() in cat_raw.lower():
                     category = cat
                     break
         elif any(line.startswith(f"[{c}]") for c in CATEGORIES):
-            in_jerry = False
+            current_field = None
             matched = next(c for c in CATEGORIES if line.startswith(f"[{c}]"))
             if len(line) > len(f"[{matched}]") + 2:
                 headline = line
@@ -97,36 +113,48 @@ Source summary: {summary}"""
             elif i + 1 < len(lines) and lines[i + 1]:
                 headline = f"[{matched}] {lines[i + 1]}"
                 category = matched
-        elif line.startswith("Significance:"):
-            in_jerry = False
-            significance = line.replace("Significance:", "").strip()
-        elif line.startswith("Traditional Chinese Summary:"):
-            in_jerry = False
-            zh_summary = line.replace("Traditional Chinese Summary:", "").strip()
-        elif line.startswith("International Cut:"):
-            in_jerry = False
-            international_cut = "yes" in line.lower()
-        elif line.startswith("International Reason:"):
-            in_jerry = False
-            international_reason = line.replace("International Reason:", "").strip()
-        elif line.startswith("Jerry says:"):
-            in_jerry = True
-            rest = line.replace("Jerry says:", "").strip()
-            if rest:
-                jerry_lines.append(rest)
-        elif in_jerry and line:
-            jerry_lines.append(line)
+        else:
+            # Check if this line starts a known field
+            matched_marker = None
+            for marker, field_key in FIELD_MARKERS.items():
+                if line.startswith(marker):
+                    matched_marker = (marker, field_key)
+                    break
 
-    jerry_says = " ".join(jerry_lines).strip()
+            if matched_marker:
+                marker, field_key = matched_marker
+                rest = line[len(marker):].strip()
+                current_field = field_key
+                if field_key == "significance_inline":
+                    current_field = None
+                    significance = rest
+                elif field_key == "zh_inline":
+                    current_field = None
+                    zh_summary = rest
+                elif field_key == "intl_cut_inline":
+                    current_field = None
+                    international_cut = "yes" in rest.lower()
+                elif field_key == "intl_reason_inline":
+                    current_field = None
+                    international_reason = rest
+                elif field_key in field_buffers:
+                    if rest:
+                        field_buffers[field_key].append(rest)
+            elif current_field and current_field in field_buffers and line:
+                field_buffers[current_field].append(line)
+
+    jerry_today   = " ".join(field_buffers["jerry_today"]).strip()
+    jerry_feature = " ".join(field_buffers["jerry_feature"]).strip()
 
     return {
-        "category": category,
-        "headline": headline or f"[{category}] {title}",
-        "significance": significance,
-        "zh_summary": zh_summary,
-        "international_cut": international_cut,
+        "category":           category,
+        "headline":           headline or f"[{category}] {title}",
+        "significance":       significance,
+        "zh_summary":         zh_summary,
+        "international_cut":  international_cut,
         "international_reason": international_reason,
-        "jerry_says": jerry_says,
+        "jerry_today":        jerry_today,
+        "jerry_feature":      jerry_feature,
         "formatted": (
             f"Story  {today}\n\n"
             f"{headline or f'[{category}] {title}'}\n\n"

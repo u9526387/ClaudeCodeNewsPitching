@@ -371,18 +371,34 @@ def render_pitch(pitch, idx):
     """, unsafe_allow_html=True)
     copy_button(formatted_text, key=f"copy_{idx}_{cat}")
 
-    jerry = pitch.get("jerry_says", "")
-    if jerry:
-        with st.expander("💡 How to develop this story"):
-            st.markdown(f"""
-            <div style='background:#0F0F0F;border:1px solid #1E1E1E;border-radius:8px;
-            padding:1rem 1.2rem;margin-top:0.2rem;'>
-              <span style='font-size:0.65rem;font-weight:700;letter-spacing:0.15em;
-              text-transform:uppercase;color:#555;'>Jerry says</span>
-              <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.7;margin-top:0.5rem;
-              margin-bottom:0;'>{jerry}</p>
-            </div>
-            """, unsafe_allow_html=True)
+    jerry_today   = pitch.get("jerry_today", "")
+    jerry_feature = pitch.get("jerry_feature", "")
+    if jerry_today or jerry_feature:
+        with st.expander("💡 Jerry says: How to develop this story"):
+            if jerry_today:
+                st.markdown(f"""
+                <div style='background:#0F0F0F;border:1px solid #1E2E1E;border-radius:8px;
+                padding:1rem 1.2rem;margin-bottom:0.8rem;'>
+                  <div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;
+                  text-transform:uppercase;color:#4CAF50;margin-bottom:0.5rem;'>
+                  ⚡ Today — What you can do right now
+                  </div>
+                  <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.75;
+                  margin:0;'>{jerry_today}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            if jerry_feature:
+                st.markdown(f"""
+                <div style='background:#0F0F0F;border:1px solid #1E1A2E;border-radius:8px;
+                padding:1rem 1.2rem;'>
+                  <div style='font-size:0.62rem;font-weight:700;letter-spacing:0.18em;
+                  text-transform:uppercase;color:#A78BFA;margin-bottom:0.5rem;'>
+                  🔭 Long-term — Feature story to pursue
+                  </div>
+                  <p style='color:#C0C0C0;font-size:0.88rem;line-height:1.75;
+                  margin:0;'>{jerry_feature}</p>
+                </div>
+                """, unsafe_allow_html=True)
     st.markdown("")
 
 
