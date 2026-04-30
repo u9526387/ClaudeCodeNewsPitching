@@ -5,7 +5,7 @@ OLLAMA_HOST = "http://localhost:11434"
 MODEL = "llama3.1"
 APP_NAME = "lovepitchingpolar"
 
-CATEGORIES = ["Diplomacy", "Security", "Human Rights", "Society", "Economy"]
+CATEGORIES = ["Politics", "Diplomacy", "Security", "Human Rights", "Society", "Economy"]
 
 # Few-shot examples to anchor tone and style
 FEW_SHOT_EXAMPLES = """

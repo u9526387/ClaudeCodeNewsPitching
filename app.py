@@ -12,7 +12,7 @@ APP_USERNAME = os.getenv("APP_USERNAME", "editor")
 APP_PASSWORD = os.getenv("APP_PASSWORD", "taiwanplus2026")
 APP_NAME = os.getenv("APP_NAME", "lovepitchingpolar")
 
-CATEGORIES = ["Diplomacy", "Security", "Human Rights", "Society", "Economy"]
+CATEGORIES = ["Politics", "Diplomacy", "Security", "Human Rights", "Society", "Economy"]
 
 CATEGORY_COLORS = {
     "Security":     "#FF4B4B",
@@ -20,12 +20,13 @@ CATEGORY_COLORS = {
     "Economy":      "#00C49A",
     "Human Rights": "#FF9F40",
     "Society":      "#A78BFA",
+    "Politics":     "#F59E0B",
 }
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="lovepitchingpolar",
-    page_icon="📡",
+    page_icon="🐻‍❄️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -195,7 +196,7 @@ if auth_status is None:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="brand-header">📡 lovepitchingpolar</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-header">🐻‍❄️ lovepitchingpolar</div>', unsafe_allow_html=True)
     st.markdown('<div class="brand-sub">Story News Agent</div>', unsafe_allow_html=True)
 
     st.markdown("**Filter by Category**")
@@ -265,7 +266,7 @@ if "pitches" not in st.session_state or refresh:
         raw = fetch_stories(hours=72)
         if not raw:
             raw = _fallback_stories()
-        st.session_state.pitches = process_stories(raw[:5])
+        st.session_state.pitches = process_stories(raw[:10])
     st.session_state.fetch_time = date.today().strftime("%B %d, %Y")
 
 
