@@ -5,6 +5,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+NGROK_DOMAIN="rope-mushily-opium.ngrok-free.dev"
+
 echo ""
 echo "  📡 lovepitchingpolar — Story News Agent"
 echo "  ──────────────────────────────────────────────"
@@ -22,9 +24,8 @@ fi
 
 echo ""
 echo "  Starting Streamlit on port 8501..."
-echo ""
 
-streamlit run app.py \
+python3 -m streamlit run app.py \
   --server.port 8501 \
   --server.headless true \
   --browser.gatherUsageStats false \
@@ -36,23 +37,29 @@ streamlit run app.py \
 
 STREAMLIT_PID=$!
 sleep 2
-
 echo "  ✓  Streamlit running at http://localhost:8501"
+
+echo ""
+echo "  Starting Ngrok tunnel..."
+ngrok http 8501 --domain="$NGROK_DOMAIN" &>/tmp/ngrok.log &
+sleep 3
+echo "  ✓  Public URL: https://$NGROK_DOMAIN"
+
 echo ""
 echo "  ──────────────────────────────────────────────"
-echo "  To share remotely (phone / laptop):"
-echo "  Open a NEW terminal and run:"
+echo "  Your permanent public link (share this):"
 echo ""
-echo "      ngrok http 8501"
-echo ""
-echo "  Then share the https://xxxxx.ngrok-free.app URL"
-echo "  ──────────────────────────────────────────────"
+echo "      https://$NGROK_DOMAIN"
 echo ""
 echo "  Login credentials:"
 echo "    Username: $(grep APP_USERNAME .env | cut -d= -f2)"
 echo "    Password: (see .env)"
+echo "  ──────────────────────────────────────────────"
 echo ""
-echo "  Press Ctrl+C to stop."
+echo "  Press Ctrl+C to stop everything."
 echo ""
+
+# Shut down both processes on exit
+trap "kill $STREAMLIT_PID 2>/dev/null; pkill -f 'ngrok http' 2>/dev/null" EXIT
 
 wait $STREAMLIT_PID
