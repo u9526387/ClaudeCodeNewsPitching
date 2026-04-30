@@ -208,6 +208,9 @@ with st.sidebar:
             selected_cats.append(cat)
 
     st.markdown("---")
+    intl_only = st.checkbox("⭐ International cuts only", value=False, key="intl_only")
+
+    st.markdown("---")
     refresh = st.button("↻  Refresh News", use_container_width=True)
 
     st.markdown("---")
@@ -284,6 +287,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 pitches = [p for p in st.session_state.pitches if p.get("category") in selected_cats]
+if st.session_state.get("intl_only"):
+    pitches = [p for p in pitches if p.get("international_cut")]
 
 if not pitches:
     st.markdown('<div style="color:#444;padding:3rem 0;">No pitches match the selected filters.</div>', unsafe_allow_html=True)
@@ -291,8 +296,9 @@ if not pitches:
 for pitch in pitches:
     cat = pitch.get("category", "Society")
     color = CATEGORY_COLORS.get(cat, "#888")
+    intl_cut = pitch.get("international_cut", False)
+    intl_reason = pitch.get("international_reason", "")
     headline_raw = pitch.get("headline", pitch.get("title", ""))
-    # Strip leading [Category] tag from display headline
     display_headline = headline_raw
     for c in CATEGORIES:
         display_headline = display_headline.replace(f"[{c}] ", "").replace(f"[{c}]", "")
@@ -304,12 +310,18 @@ for pitch in pitches:
     ts = pitch.get("timestamp", "")
     formatted_text = pitch.get("formatted", "")
 
+    card_border = "#FFD700" if intl_cut else "#242424"
+    card_bg = "#161400" if intl_cut else "#141414"
+    intl_badge = '<span style="background:#FFD70022;color:#FFD700;font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-left:0.5rem;">⭐ International Cut</span>' if intl_cut else ""
+    intl_reason_html = f'<div style="font-size:0.8rem;color:#FFD700;opacity:0.85;margin-bottom:0.8rem;font-style:italic;">✦ {intl_reason}</div>' if intl_cut and intl_reason else ""
+
     st.markdown(f"""
-    <div class="pitch-card">
-      <span class="pitch-cat" style="background:{color}22;color:{color};">{cat}</span>
-      <div class="pitch-headline">
+    <div class="pitch-card" style="background:{card_bg};border-color:{card_border};">
+      <span class="pitch-cat" style="background:{color}22;color:{color};">{cat}</span>{intl_badge}
+      <div class="pitch-headline" style="margin-top:0.6rem;">
         <a href="{link}" target="_blank">{display_headline}</a>
       </div>
+      {intl_reason_html}
       <div class="pitch-sig-label">Significance</div>
       <div class="pitch-sig">{sig}</div>
       <div class="pitch-zh">🀄 {zh}</div>

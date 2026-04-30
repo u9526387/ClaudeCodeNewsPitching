@@ -58,6 +58,10 @@ Significance: <2–3 sentences on why the world should care — specific global 
 
 Traditional Chinese Summary: <exactly ONE sentence in Traditional Chinese (繁體中文)>
 
+International Cut: <YES or NO — would BBC, CNN, or an international broadcaster lead with this?>
+
+International Reason: <if YES, one sentence explaining why a global audience would care; if NO, leave blank>
+
 Source headline: {title}
 Source summary: {summary}"""
 
@@ -68,6 +72,8 @@ Source summary: {summary}"""
     headline = ""
     significance = ""
     zh_summary = ""
+    international_cut = False
+    international_reason = ""
 
     for i, line in enumerate(lines):
         if line.startswith("Category:"):
@@ -88,12 +94,18 @@ Source summary: {summary}"""
             significance = line.replace("Significance:", "").strip()
         elif line.startswith("Traditional Chinese Summary:"):
             zh_summary = line.replace("Traditional Chinese Summary:", "").strip()
+        elif line.startswith("International Cut:"):
+            international_cut = "yes" in line.lower()
+        elif line.startswith("International Reason:"):
+            international_reason = line.replace("International Reason:", "").strip()
 
     return {
         "category": category,
         "headline": headline or f"[{category}] {title}",
         "significance": significance,
         "zh_summary": zh_summary,
+        "international_cut": international_cut,
+        "international_reason": international_reason,
         "formatted": (
             f"Story  {today}\n\n"
             f"{headline or f'[{category}] {title}'}\n\n"
