@@ -58,9 +58,9 @@ Significance: <2–3 sentences on why the world should care — specific global 
 
 Traditional Chinese Summary: <exactly ONE sentence in Traditional Chinese (繁體中文)>
 
-International Cut: <YES or NO — would BBC, CNN, or an international broadcaster lead with this?>
+International Cut: <YES or NO. Be very strict — only YES if ALL three apply: (1) a non-Taiwan audience would genuinely care without needing background context, (2) it has clear consequences beyond Taiwan's borders — geopolitical, economic, or security implications for other countries, (3) BBC World, CNN International, or Reuters would plausibly run this as a standalone story today. Local politics, domestic policy, and government routine do NOT qualify. Most stories should be NO.>
 
-International Reason: <if YES, one sentence explaining why a global audience would care; if NO, leave blank>
+International Reason: <if YES, exactly one sentence explaining the specific cross-border consequence that makes this globally relevant; if NO, leave blank>
 
 Source headline: {title}
 Source summary: {summary}"""

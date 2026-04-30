@@ -290,10 +290,14 @@ pitches = [p for p in st.session_state.pitches if p.get("category") in selected_
 if st.session_state.get("intl_only"):
     pitches = [p for p in pitches if p.get("international_cut")]
 
+cut_pitches  = [p for p in pitches if p.get("international_cut")]
+rest_pitches = [p for p in pitches if not p.get("international_cut")]
+
 if not pitches:
     st.markdown('<div style="color:#444;padding:3rem 0;">No pitches match the selected filters.</div>', unsafe_allow_html=True)
 
-for pitch in pitches:
+
+def render_pitch(pitch, idx):
     cat = pitch.get("category", "Society")
     color = CATEGORY_COLORS.get(cat, "#888")
     intl_cut = pitch.get("international_cut", False)
@@ -328,6 +332,30 @@ for pitch in pitches:
       <div class="pitch-meta">{source} · {ts}</div>
     </div>
     """, unsafe_allow_html=True)
-
-    copy_button(formatted_text, key=f"copy_{ts}_{cat}")
+    copy_button(formatted_text, key=f"copy_{idx}_{cat}")
     st.markdown("")
+
+
+# ── Pinned: International Cuts ────────────────────────────────────────────────
+if cut_pitches:
+    st.markdown("""
+    <div style='font-size:0.65rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;
+    color:#FFD700;padding:0.2rem 0 0.8rem 0;'>⭐ International Cuts</div>
+    """, unsafe_allow_html=True)
+    for i, pitch in enumerate(cut_pitches):
+        render_pitch(pitch, f"cut_{i}")
+
+# ── Divider between sections ──────────────────────────────────────────────────
+if cut_pitches and rest_pitches:
+    st.markdown("""
+    <div style='display:flex;align-items:center;gap:1rem;margin:1.2rem 0 1.6rem 0;'>
+      <div style='flex:1;height:1px;background:#1E1E1E;'></div>
+      <div style='font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:#333;
+      white-space:nowrap;'>Other Stories</div>
+      <div style='flex:1;height:1px;background:#1E1E1E;'></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── Rest of stories ───────────────────────────────────────────────────────────
+for i, pitch in enumerate(rest_pitches):
+    render_pitch(pitch, f"rest_{i}")
