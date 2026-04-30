@@ -265,7 +265,7 @@ if "pitches" not in st.session_state or refresh:
         raw = fetch_stories(hours=72)
         if not raw:
             raw = _fallback_stories()
-        st.session_state.pitches = process_stories(raw[:10])
+        st.session_state.pitches = process_stories(raw[:5])
     st.session_state.fetch_time = date.today().strftime("%B %d, %Y")
 
 

@@ -39,62 +39,51 @@ def _chat(prompt: str) -> str:
     return response["message"]["content"].strip()
 
 
-def classify_story(title: str, summary: str) -> str:
-    prompt = f"""You are a news editor for Story, an international English-language broadcaster.
-Classify the story below into exactly ONE of these categories: {', '.join(CATEGORIES)}.
-
-Reply with ONLY the category name — no brackets, no explanation.
-
-Story title: {title}
-Story summary: {summary}
-
-Category:"""
-    result = _chat(prompt).strip("[]").strip()
-    # Validate; fall back to closest match
-    for cat in CATEGORIES:
-        if cat.lower() in result.lower():
-            return cat
-    return "Society"
-
-
-def format_pitch(title: str, summary: str, category: str) -> dict:
+def process_single_story(title: str, summary: str) -> dict:
+    """Single Ollama call: classify + format pitch in one shot."""
     today = date.today().strftime("%B %d, %Y")
+    cats = ", ".join(CATEGORIES)
     prompt = f"""You are a senior producer at Story, an international English-language broadcaster based in Taiwan.
-Your job is to write compelling story pitches for a global audience.
 
-Study these examples of the exact tone and format required:
+Study these pitch examples for tone and format:
 {FEW_SHOT_EXAMPLES}
 
-Now write a pitch for the following story. Follow the format EXACTLY:
+Now process this story in ONE response. Follow the format EXACTLY — no extra text before or after:
 
-Line 1: [{category}] <the story headline, rewritten to be punchy and clear>
-Line 2: (blank)
-Line 3: Significance: <2–3 sentences explaining WHY THE WORLD should care about Taiwan in this context. Be specific about global consequences — trade, security, democracy. Do NOT be vague.>
-Line 4: (blank)
-Line 5: Traditional Chinese Summary: <exactly ONE sentence in Traditional Chinese (繁體中文) that summarizes the story>
+Category: <one of: {cats}>
+
+[Category] <punchy rewritten headline>
+
+Significance: <2–3 sentences on why the world should care — specific global consequences>
+
+Traditional Chinese Summary: <exactly ONE sentence in Traditional Chinese (繁體中文)>
 
 Source headline: {title}
-Source summary: {summary}
-
-Do not add any commentary before or after the formatted pitch. Output only the pitch."""
+Source summary: {summary}"""
 
     raw = _chat(prompt)
-
     lines = [l.strip() for l in raw.strip().splitlines()]
 
+    category = "Society"
     headline = ""
     significance = ""
     zh_summary = ""
 
     for i, line in enumerate(lines):
-        if line.startswith(f"[{category}]"):
-            # Model sometimes puts category alone, headline on next line
-            if len(line.strip()) > len(f"[{category}]") + 2:
+        if line.startswith("Category:"):
+            cat_raw = line.replace("Category:", "").strip().strip("[]")
+            for cat in CATEGORIES:
+                if cat.lower() in cat_raw.lower():
+                    category = cat
+                    break
+        elif any(line.startswith(f"[{c}]") for c in CATEGORIES):
+            matched = next(c for c in CATEGORIES if line.startswith(f"[{c}]"))
+            if len(line) > len(f"[{matched}]") + 2:
                 headline = line
+                category = matched
             elif i + 1 < len(lines) and lines[i + 1]:
-                headline = f"[{category}] {lines[i + 1]}"
-            else:
-                headline = line
+                headline = f"[{matched}] {lines[i + 1]}"
+                category = matched
         elif line.startswith("Significance:"):
             significance = line.replace("Significance:", "").strip()
         elif line.startswith("Traditional Chinese Summary:"):
@@ -118,8 +107,7 @@ def process_stories(stories) -> list:
     enriched = []
     for story in stories:
         print(f"  Processing: {story['title'][:60]}...")
-        category = classify_story(story["title"], story["summary"])
-        pitch = format_pitch(story["title"], story["summary"], category)
+        pitch = process_single_story(story["title"], story["summary"])
         enriched.append({**story, **pitch})
     return enriched
 
