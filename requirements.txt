@@ -1,0 +1,8 @@
+streamlit
+feedparser
+ollama
+streamlit-authenticator
+python-dotenv
+PyYAML
+requests
+beautifulsoup4
