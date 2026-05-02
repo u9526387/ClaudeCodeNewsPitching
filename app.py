@@ -22,62 +22,96 @@ if not APP_USERNAME or not APP_PASSWORD:
 CATEGORIES = ["Politics", "Diplomacy", "Security", "Human Rights", "Society", "Economy"]
 
 CATEGORY_COLORS = {
-    "Security":     "#FF4B4B",
-    "Diplomacy":    "#4B9EFF",
-    "Economy":      "#00C49A",
-    "Human Rights": "#FF9F40",
-    "Society":      "#A78BFA",
-    "Politics":     "#F59E0B",
+    "Security":     "#FF6B6B",
+    "Diplomacy":    "#5BC8F5",
+    "Economy":      "#3DD9B3",
+    "Human Rights": "#FFB347",
+    "Society":      "#B8A9FA",
+    "Politics":     "#FFD166",
 }
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="lovepitchingpolar",
+    page_title="PolarPitchBot",
     page_icon="🐻‍❄️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Global CSS — City Boy dark aesthetic ─────────────────────────────────────
+# ── Global CSS — Arctic theme ─────────────────────────────────────────────────
 st.markdown("""
 <style>
-  /* Base */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  /* ── Base: deep arctic night ── */
   html, body, [data-testid="stAppViewContainer"] {
-    background-color: #0D0D0D;
-    color: #E8E8E8;
+    background: linear-gradient(160deg, #060E1C 0%, #091828 55%, #060F1A 100%);
+    background-attachment: fixed;
+    color: #C8DFF0;
     font-family: 'Inter', 'SF Pro Display', -apple-system, sans-serif;
   }
   [data-testid="stSidebar"] {
-    background-color: #111111;
-    border-right: 1px solid #222;
+    background: linear-gradient(180deg, #060E1C 0%, #08121F 100%);
+    border-right: 1px solid #162540;
   }
-  /* Header */
+
+  /* ── Aurora shimmer on top bar ── */
+  [data-testid="stHeader"] {
+    background: linear-gradient(90deg,
+      rgba(0,180,216,0.08) 0%,
+      rgba(72,202,228,0.04) 50%,
+      rgba(0,119,182,0.08) 100%);
+    border-bottom: 1px solid #162540;
+  }
+
+  /* ── Snowfall animation ── */
+  @keyframes drift {
+    0%   { transform: translateY(-40px) translateX(0px)  rotate(0deg);   opacity: 0; }
+    8%   { opacity: 0.75; }
+    92%  { opacity: 0.5; }
+    100% { transform: translateY(105vh)  translateX(25px) rotate(180deg); opacity: 0; }
+  }
+  .flake {
+    position: fixed;
+    color: rgba(180, 220, 255, 0.55);
+    pointer-events: none;
+    z-index: 0;
+    animation: drift linear infinite;
+    user-select: none;
+  }
+
+  /* ── Brand ── */
   .brand-header {
     font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: #FFFFFF;
+    color: #A8D8F0;
     padding: 0.2rem 0 1.4rem 0;
   }
   .brand-sub {
     font-size: 0.65rem;
     letter-spacing: 0.22em;
-    color: #555;
+    color: #2A4A6A;
     text-transform: uppercase;
     margin-top: -1.2rem;
     padding-bottom: 1.6rem;
   }
-  /* Pitch card */
+
+  /* ── Pitch card: frosted ice ── */
   .pitch-card {
-    background: #141414;
-    border: 1px solid #242424;
-    border-radius: 10px;
+    background: rgba(8, 20, 38, 0.82);
+    border: 1px solid #1A3050;
+    border-radius: 12px;
     padding: 1.4rem 1.6rem 1rem 1.6rem;
     margin-bottom: 1.2rem;
-    transition: border-color 0.2s;
+    backdrop-filter: blur(6px);
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .pitch-card:hover { border-color: #333; }
+  .pitch-card:hover {
+    border-color: #3A8FBF;
+    box-shadow: 0 0 18px rgba(91, 200, 245, 0.08);
+  }
   .pitch-cat {
     display: inline-block;
     font-size: 0.65rem;
@@ -91,78 +125,97 @@ st.markdown("""
   .pitch-headline {
     font-size: 1.05rem;
     font-weight: 600;
-    color: #FFFFFF;
+    color: #E8F4FF;
     line-height: 1.4;
     margin-bottom: 0.8rem;
   }
-  .pitch-headline a {
-    color: #FFFFFF;
-    text-decoration: none;
-  }
-  .pitch-headline a:hover { color: #aaa; }
+  .pitch-headline a { color: #E8F4FF; text-decoration: none; }
+  .pitch-headline a:hover { color: #5BC8F5; }
   .pitch-sig-label {
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: #555;
+    color: #2A5070;
     margin-bottom: 0.25rem;
   }
   .pitch-sig {
     font-size: 0.9rem;
-    color: #C0C0C0;
+    color: #A8C8E0;
     line-height: 1.65;
     margin-bottom: 1rem;
   }
   .pitch-zh {
     font-size: 0.88rem;
-    color: #888;
-    border-left: 2px solid #2A2A2A;
+    color: #5A8AA8;
+    border-left: 2px solid #1A3050;
     padding-left: 0.8rem;
     margin-bottom: 1rem;
     line-height: 1.6;
   }
   .pitch-meta {
     font-size: 0.68rem;
-    color: #444;
+    color: #2A5070;
     letter-spacing: 0.06em;
   }
-  /* Copy button */
+
+  /* ── Copy button ── */
   .copy-btn {
     display: inline-block;
     margin-top: 0.6rem;
     padding: 6px 16px;
-    background: #1A1A1A;
-    border: 1px solid #303030;
+    background: rgba(10, 30, 55, 0.8);
+    border: 1px solid #1E4060;
     border-radius: 6px;
-    color: #888;
+    color: #5A8AA8;
     font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.15s;
   }
-  .copy-btn:hover { background: #222; color: #ccc; border-color: #444; }
-  /* Divider */
-  hr { border-color: #1E1E1E; }
-  /* Streamlit overrides */
+  .copy-btn:hover { background: #0E2A48; color: #5BC8F5; border-color: #3A7AA0; }
+
+  /* ── Divider ── */
+  hr { border-color: #102030; }
+
+  /* ── Streamlit overrides ── */
   .stButton > button {
-    background: #1A1A1A !important;
-    color: #888 !important;
-    border: 1px solid #303030 !important;
+    background: rgba(10, 30, 55, 0.8) !important;
+    color: #5A8AA8 !important;
+    border: 1px solid #1E4060 !important;
     border-radius: 6px !important;
     font-size: 0.72rem !important;
     letter-spacing: 0.1em !important;
     text-transform: uppercase !important;
   }
   .stButton > button:hover {
-    background: #222 !important;
-    color: #ccc !important;
-    border-color: #444 !important;
+    background: #0E2A48 !important;
+    color: #5BC8F5 !important;
+    border-color: #3A7AA0 !important;
   }
-  [data-testid="stCheckbox"] label { color: #888; font-size: 0.82rem; }
-  div[data-testid="stMetricValue"] { color: #FFF; }
-  .stSpinner > div { color: #555 !important; }
+  [data-testid="stCheckbox"] label { color: #5A8AA8; font-size: 0.82rem; }
+  div[data-testid="stMetricValue"] { color: #E8F4FF; }
+  .stSpinner > div { color: #2A5A80 !important; }
+  [data-testid="stStatusWidget"] { background: rgba(8,20,38,0.9) !important; }
 </style>
+""", unsafe_allow_html=True)
+
+# ── Arctic background: polar bear watermark + snowflakes ─────────────────────
+import random as _random
+_flakes = "".join(
+    f'<span class="flake" style="left:{_random.randint(1,98)}%;'
+    f'font-size:{_random.uniform(0.5,1.3):.1f}rem;'
+    f'animation-duration:{_random.randint(10,22)}s;'
+    f'animation-delay:{_random.randint(0,18)}s;">❄</span>'
+    for _ in range(28)
+)
+st.markdown(f"""
+<div style="position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;">
+  <div style="position:absolute;bottom:-3rem;right:-2rem;font-size:32rem;
+    opacity:0.055;line-height:1;filter:blur(1px);transform:scaleX(-1);
+    user-select:none;">🐻‍❄️</div>
+  {_flakes}
+</div>
 """, unsafe_allow_html=True)
 
 
@@ -185,7 +238,7 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=7,
 )
 
-authenticator.login(location="main", fields={"Form name": "Login — Story"})
+authenticator.login(location="main", fields={"Form name": "Login — PolarPitchBot"})
 
 auth_status = st.session_state.get("authentication_status")
 
@@ -195,7 +248,7 @@ if auth_status is False:
 
 if auth_status is None:
     st.markdown("""
-    <div style='color:#444;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;
+    <div style='color:#1A4060;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;
     text-align:center;padding-top:3rem;'>Taiwan · News · Intelligence</div>
     """, unsafe_allow_html=True)
     st.stop()
@@ -203,7 +256,7 @@ if auth_status is None:
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown('<div class="brand-header">🐻‍❄️ lovepitchingpolar</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-header">🐻‍❄️ PolarPitchBot</div>', unsafe_allow_html=True)
     st.markdown('<div class="brand-sub">Story News Agent</div>', unsafe_allow_html=True)
 
     st.markdown("**Filter by Category**")
@@ -236,7 +289,7 @@ with st.sidebar:
     authenticator.logout("Logout", "sidebar")
 
     st.markdown("""
-    <div style='font-size:0.62rem;color:#333;letter-spacing:0.1em;text-transform:uppercase;
+    <div style='font-size:0.62rem;color:#1A3A5A;letter-spacing:0.1em;text-transform:uppercase;
     padding-top:1rem;'>Powered by Ollama · llama3.1</div>
     """, unsafe_allow_html=True)
 
