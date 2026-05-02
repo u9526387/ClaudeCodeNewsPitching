@@ -1,5 +1,12 @@
+import json
+import hashlib
 import ollama
-from datetime import date
+from datetime import date, timedelta
+from pathlib import Path
+
+CACHE_FILE = Path(__file__).parent / "pitch_cache.json"
+CACHE_TTL_DAYS = 7
+MAX_NEW_PER_RUN = 20
 
 OLLAMA_HOST = "http://localhost:11434"
 MODEL = "llama3.1"
@@ -183,13 +190,58 @@ Jerry feature: <Still as Jerry. Suggest exactly 3 bullet points for a longer inv
     }
 
 
-def process_stories(stories) -> list:
-    enriched = []
+def _cache_key(url: str) -> str:
+    return hashlib.sha1(url.encode()).hexdigest()[:16]
+
+
+def _load_cache() -> dict:
+    if not CACHE_FILE.exists():
+        return {}
+    try:
+        with open(CACHE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        cutoff = (date.today() - timedelta(days=CACHE_TTL_DAYS)).isoformat()
+        return {k: v for k, v in data.items() if v.get("cached_at", "") >= cutoff}
+    except Exception:
+        return {}
+
+
+def _save_cache(cache: dict):
+    cutoff = (date.today() - timedelta(days=CACHE_TTL_DAYS)).isoformat()
+    pruned = {k: v for k, v in cache.items() if v.get("cached_at", "") >= cutoff}
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(pruned, f, ensure_ascii=False, indent=2)
+
+
+def process_stories(stories, progress_cb=None) -> list:
+    cache = _load_cache()
+    cached_results = []
+    new_queue = []
+
     for story in stories:
-        print(f"  Processing: {story['title'][:60]}...")
+        key = _cache_key(story.get("link", story["title"]))
+        if key in cache:
+            cached_results.append({**story, **cache[key]})
+        else:
+            new_queue.append((key, story))
+
+    new_queue = new_queue[:MAX_NEW_PER_RUN]
+    total_new = len(new_queue)
+    newly_processed = []
+
+    for i, (key, story) in enumerate(new_queue):
+        print(f"  Processing ({i+1}/{total_new}): {story['title'][:60]}...")
+        if progress_cb:
+            progress_cb(i, total_new, story["title"])
         pitch = process_single_story(story["title"], story["summary"])
-        enriched.append({**story, **pitch})
-    return enriched
+        pitch["cached_at"] = date.today().isoformat()
+        cache[key] = pitch
+        _save_cache(cache)
+        newly_processed.append({**story, **pitch})
+
+    skipped = len(stories) - len(cached_results) - len(new_queue)
+    print(f"  Cache: {len(cached_results)} hits | New: {total_new} processed | Skipped (cap): {skipped}")
+    return cached_results + newly_processed
 
 
 if __name__ == "__main__":

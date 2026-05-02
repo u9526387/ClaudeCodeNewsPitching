@@ -1,8 +1,10 @@
 import re
+import feedparser
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 APP_NAME = "lovepitchingpolar"
 
@@ -13,7 +15,29 @@ KEYWORDS = [
     "election", "tsmc", "chip", "legislative yuan", "executive yuan",
     "ministry", "president", "parliament", "legislation", "bill", "policy",
     "strait", "beijing", "weapon", "arms", "tariff", "geopolit",
-    "立法院", "行政院", "國防", "外交", "經濟", "兩岸", "國會", "關稅",
+    "立法院", "國防", "外交", "經濟", "兩岸", "國會", "關稅",
+    "中國", "美國", "軍事", "台灣", "解放軍", "制裁", "貿易", "半導體",
+]
+
+# Stricter keyword set for Executive Yuan — excludes 行政院 so routine press releases don't pass
+_EY_KEYWORDS = [
+    "國防", "外交", "兩岸", "關稅", "軍事", "半導體", "防衛", "美國",
+    "軍購", "中共", "解放軍", "安全", "制裁", "貿易", "晶片", "台海",
+]
+
+# Google News RSS queries — each covers a distinct topic cluster
+GOOGLE_NEWS_QUERIES = [
+    # Topic-based (pulls from Reuters, AP, Bloomberg, Nikkei, etc.)
+    "taiwan defense military security",
+    "taiwan china cross-strait PLA strait",
+    "taiwan semiconductor chip TSMC economy",
+    "taiwan diplomacy foreign affairs international",
+    "taiwan politics legislature election",
+    "taiwan human rights civil society",
+    "taiwan tariff trade US sanctions",
+    # Site-specific: sources that are JS-rendered and can't be scraped directly
+    "site:taiwannews.com.tw",          # Taiwan News (Next.js, no static HTML)
+    "legislative yuan taiwan bill",    # Legislative Yuan (AJAX-rendered)
 ]
 
 SKIP_DOMAINS = {
@@ -51,11 +75,8 @@ def _resolve_url(href: str, base: str) -> str:
 
 
 def _clean_title(text: str) -> str:
-    """Trim titles that run into their own subheadline (no space between sentences)."""
     text = text.strip()
-    # Strip leading page numbers like "1China..." or "2Military..."
     text = re.sub(r'^\d+([A-Z])', r'\1', text)
-    # Split where lowercase runs directly into uppercase (concatenated sentences)
     text = re.sub(r'([a-z])([A-Z])', r'\1 | \2', text)
     return text.split(" | ")[0].strip()
 
@@ -87,7 +108,35 @@ def _fetch(url: str) -> Optional[BeautifulSoup]:
         return None
 
 
-# ── Per-source scrapers ────────────────────────────────────────────────────────
+# ── Google News RSS (primary source) ─────────────────────────────────────────
+
+def _scrape_google_news(query: str) -> list:
+    encoded = requests.utils.quote(query)
+    url = f"https://news.google.com/rss/search?q={encoded}+when:2d&hl=en-US&gl=US&ceid=US:en"
+    try:
+        feed = feedparser.parse(url)
+        stories = []
+        for entry in feed.entries[:12]:
+            title = entry.get("title", "")
+            link  = entry.get("link", "")
+            # Strip " - Source Name" suffix Google appends
+            source_name = ""
+            if hasattr(entry, "source") and entry.source.get("title"):
+                source_name = entry.source["title"]
+                if title.endswith(f" - {source_name}"):
+                    title = title[: -(len(source_name) + 3)].strip()
+            summary_html = entry.get("summary", "")
+            summary = BeautifulSoup(summary_html, "html.parser").get_text(separator=" ").strip()
+            s = _make_story(title, link, source_name or "Google News", summary)
+            if s:
+                stories.append(s)
+        return stories
+    except Exception as e:
+        print(f"  [Google News '{query[:30]}']: {e}")
+        return []
+
+
+# ── Taiwan-local HTML scrapers (supplement) ───────────────────────────────────
 
 def _scrape_taipei_times() -> list:
     soup = _fetch("https://www.taipeitimes.com")
@@ -116,7 +165,6 @@ def _scrape_focus_taiwan() -> list:
     stories, seen = [], set()
     for a in soup.find_all("a", href=True):
         href = a["href"]
-        # Article URLs look like /category/YYYYMMDDNNNN
         if not re.search(r'/\w+/\d{12}', href):
             continue
         title = a.get_text(strip=True)
@@ -135,8 +183,8 @@ def _scrape_cna() -> list:
     if not soup:
         return []
     stories, seen = [], set()
-    for a in soup.select("a._ellipsis_simple"):
-        title = a.get_text(strip=True)
+    for a in soup.select("ul.mainList a, a._ellipsis_simple"):
+        title = re.sub(r'\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}$', '', a.get_text(strip=True)).strip()
         href = a.get("href", "")
         link = _resolve_url(href, "https://www.cna.com.tw")
         if link in seen or not link:
@@ -160,9 +208,14 @@ def _scrape_executive_yuan() -> list:
         if link in seen or not link:
             continue
         seen.add(link)
-        s = _make_story(title, link, "Executive Yuan")
-        if s:
-            stories.append(s)
+        if len(title) < 10:
+            continue
+        if not any(kw in title for kw in _EY_KEYWORDS):
+            continue
+        stories.append({
+            "title": title, "link": link,
+            "summary": "", "source": "Executive Yuan", "timestamp": NOW_UTC,
+        })
     return stories
 
 
@@ -171,9 +224,11 @@ def _scrape_pts() -> list:
     if not soup:
         return []
     stories, seen = [], set()
-    for a in soup.select("article a, .news-item a, h2 a, h3 a, .title a"):
+    for a in soup.select("h2 a"):
         title = a.get_text(strip=True)
         href = a.get("href", "")
+        if not href or "/article/" not in href:
+            continue
         link = _resolve_url(href, "https://news.pts.org.tw")
         if link in seen or not link:
             continue
@@ -184,35 +239,88 @@ def _scrape_pts() -> list:
     return stories
 
 
+def _scrape_ketagalan() -> list:
+    soup = _fetch("https://www.ketagalanmedia.com")
+    if not soup:
+        return []
+    stories, seen = [], set()
+    for a in soup.select("h2 a, .entry-title a"):
+        title = a.get_text(strip=True)
+        href = a.get("href", "")
+        if not re.search(r'ketagalanmedia\.com/20\d{2}/', href):
+            continue
+        if href in seen:
+            continue
+        seen.add(href)
+        s = _make_story(title, href, "Ketagalan Media")
+        if s:
+            stories.append(s)
+    return stories
+
+
+def _scrape_amcham() -> list:
+    soup = _fetch("https://topics.amcham.com.tw")
+    if not soup:
+        return []
+    stories, seen = [], set()
+    for a in soup.select("h2 a, h3 a"):
+        title = a.get_text(strip=True)
+        href = a.get("href", "")
+        if not re.search(r'amcham\.com\.tw/20\d{2}/', href):
+            continue
+        if href in seen:
+            continue
+        seen.add(href)
+        s = _make_story(title, href, "AmCham Topics")
+        if s:
+            stories.append(s)
+    return stories
+
+
 # ── Main entry point ───────────────────────────────────────────────────────────
 
-SCRAPERS = [
-    ("Taipei Times",  _scrape_taipei_times),
-    ("Focus Taiwan",  _scrape_focus_taiwan),
-    ("CNA",           _scrape_cna),
-    ("Executive Yuan",_scrape_executive_yuan),
-    ("PTS",           _scrape_pts),
+_HTML_SCRAPERS = [
+    ("Taipei Times",    _scrape_taipei_times),
+    ("Focus Taiwan",    _scrape_focus_taiwan),
+    ("CNA",             _scrape_cna),
+    ("Executive Yuan",  _scrape_executive_yuan),
+    ("PTS",             _scrape_pts),
+    ("Ketagalan Media", _scrape_ketagalan),
+    ("AmCham Topics",   _scrape_amcham),
 ]
 
 
-def fetch_stories(hours: int = 24) -> list:
+def fetch_stories() -> list:
     all_stories = []
-    for name, fn in SCRAPERS:
-        try:
-            results = fn()
-            print(f"  [{name}] {len(results)} stories")
-            all_stories.extend(results)
-        except Exception as e:
-            print(f"  [{name}] error: {e}")
+    tasks = {}
 
-    # Deduplicate by normalised title
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        # Google News queries
+        for query in GOOGLE_NEWS_QUERIES:
+            tasks[executor.submit(_scrape_google_news, query)] = f"Google News: {query[:35]}"
+        # Taiwan-local HTML scrapers
+        for name, fn in _HTML_SCRAPERS:
+            tasks[executor.submit(fn)] = name
+
+        for future in as_completed(tasks):
+            label = tasks[future]
+            try:
+                results = future.result()
+                if results:
+                    print(f"  [{label}] {len(results)} stories")
+                all_stories.extend(results)
+            except Exception as e:
+                print(f"  [{label}] error: {e}")
+
+    # Deduplicate by normalised title (first 55 chars)
     seen, unique = set(), []
     for s in all_stories:
-        key = re.sub(r'\s+', ' ', s["title"].lower())[:60]
+        key = re.sub(r'\s+', ' ', s["title"].lower())[:55]
         if key not in seen:
             seen.add(key)
             unique.append(s)
 
+    print(f"  Total unique stories: {len(unique)}")
     return unique
 
 

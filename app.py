@@ -11,9 +11,13 @@ AUTO_REFRESH_HOUR = 20  # 8pm Taiwan time
 
 load_dotenv()
 
-APP_USERNAME = os.getenv("APP_USERNAME", "editor")
-APP_PASSWORD = os.getenv("APP_PASSWORD", "taiwanplus2026")
-APP_NAME = os.getenv("APP_NAME", "lovepitchingpolar")
+APP_USERNAME = os.getenv("APP_USERNAME")
+APP_PASSWORD = os.getenv("APP_PASSWORD")
+APP_NAME     = "lovepitchingpolar"
+
+if not APP_USERNAME or not APP_PASSWORD:
+    st.error("Missing credentials. Set APP_USERNAME and APP_PASSWORD in your .env file.")
+    st.stop()
 
 CATEGORIES = ["Politics", "Diplomacy", "Security", "Human Rights", "Society", "Economy"]
 
@@ -293,11 +297,28 @@ if _should_auto_refresh():
 
 # ── Session state / data loading ──────────────────────────────────────────────
 if "pitches" not in st.session_state or refresh:
-    with st.spinner("Fetching and analysing stories..."):
-        raw = fetch_stories(hours=72)
+    with st.status("Crawling news sources...", expanded=True) as status:
+        raw = fetch_stories()
         if not raw:
             raw = _fallback_stories()
-        st.session_state.pitches = process_stories(raw[:10])
+        status.update(label=f"Found {len(raw)} candidate stories — checking cache and processing new ones...")
+        progress_bar = st.progress(0)
+        story_label  = st.empty()
+
+        def _on_progress(i, n, title):
+            if n > 0:
+                progress_bar.progress(i / n)
+            story_label.markdown(
+                f"<div style='font-size:0.78rem;color:#555;'>"
+                f"New story {i + 1} of {n} — {title[:70]}</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.session_state.pitches = process_stories(raw, progress_cb=_on_progress)
+        progress_bar.progress(1.0)
+        story_label.empty()
+        total = len(st.session_state.pitches)
+        status.update(label=f"Done — {total} pitches ready", state="complete", expanded=False)
     st.session_state.fetch_time = datetime.now(TAIWAN_TZ).strftime("%B %d, %Y — %H:%M Taiwan time")
 
 
