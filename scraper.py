@@ -41,6 +41,36 @@ GOOGLE_NEWS_QUERIES = [
     "legislative yuan taiwan bill",    # Legislative Yuan (AJAX-rendered)
 ]
 
+# Terms that confirm a story is actually about/relevant to Taiwan.
+# A story must contain at least one of these — passing topic keywords alone is not enough.
+TAIWAN_TERMS = [
+    # English
+    "taiwan", "taipei", "tsmc", "cross-strait", "taiwan strait",
+    "legislative yuan", "executive yuan", "formosa",
+    "lai ching-te", "william lai", "han kuo-yu", "ko wen-je",
+    # Chinese
+    "台灣", "台北", "中華民國", "立法院", "行政院", "民進黨", "國民黨",
+    "賴清德", "黃國昌", "鄭麗文", "兩岸", "台海", "挺台", "對台",
+    "九合一", "移工", "原住民",
+]
+
+# Sources whose entire output is Taiwan-focused by definition — skip the Taiwan check.
+# CNA and PTS are NOT here: their pages mix Taiwan and international stories, so they
+# need the explicit Taiwan-term check just like any other source.
+_TRUSTED_TAIWAN_SOURCES = {
+    "Focus Taiwan",    # every story is Taiwan-focused
+    "Executive Yuan",  # Taiwan government press releases
+    "Ketagalan Media", # Taiwan politics/society analysis
+    "AmCham Topics",   # Taiwan business and security
+    "Taiwan News",     # Taiwan-focused English outlet
+}
+
+
+def _is_taiwan_story(title: str, summary: str) -> bool:
+    combined = (title + " " + summary).lower()
+    return any(t.lower() in combined for t in TAIWAN_TERMS)
+
+
 SKIP_DOMAINS = {
     "facebook.com", "instagram.com", "youtube.com", "twitter.com",
     "x.com", "threads.com", "line.me", "tiktok.com",
@@ -89,6 +119,8 @@ def _make_story(title: str, link: str, source: str, summary: str = "") -> Option
     if any(d in link for d in SKIP_DOMAINS):
         return None
     if not _matches_keywords(title + " " + summary):
+        return None
+    if source not in _TRUSTED_TAIWAN_SOURCES and not _is_taiwan_story(title, summary):
         return None
     return {
         "title":     title,
