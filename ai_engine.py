@@ -81,9 +81,11 @@ Significance: <2–3 sentences on why the world should care — specific global 
 
 Traditional Chinese Summary: <exactly ONE sentence in Traditional Chinese (繁體中文)>
 
+Why Read: <One punchy sentence — the specific tension, revelation, or human stakes that make a reader lean forward. This is the angle a producer pitches in a meeting: not a summary, but the HOOK. What is surprising, alarming, or unresolved in this story? What question does it leave unanswered that the reader needs to know? Be specific to THIS story's facts.>
+
 International Cut: <YES or NO. Be very strict — only YES if ALL three apply: (1) a non-Taiwan audience would genuinely care without needing background context, (2) it has clear consequences beyond Taiwan's borders — geopolitical, economic, or security implications for other countries, (3) BBC World, CNN International, or Reuters would plausibly run this as a standalone story today. Local politics, domestic policy, and government routine do NOT qualify. Most stories should be NO.>
 
-International Reason: <if YES, exactly one sentence explaining the specific cross-border consequence that makes this globally relevant; if NO, leave blank>
+International Reason: <if YES, write exactly TWO sentences. Sentence 1 — the Taiwan connection: explain specifically WHY Taiwan is at the centre of this story and why it cannot be told without Taiwan (not just "Taiwan is involved" — explain the structural role Taiwan plays). Sentence 2 — the audience hook: what specific consequence or revelation would make a non-Taiwan reader click, share, or stay up at night worrying about this. If NO, leave blank.>
 
 Jerry today: <You are Jerry, a veteran TV field reporter in Taiwan with 20 years of experience. A junior reporter has ONE DAY to add depth to THIS specific story. Give exactly 3 bullet points. Each bullet must follow this structure: "• [Who/What to do] — [Why this helps] → [Expected result]". Be ruthlessly realistic: never suggest calling presidents, ministers, or heads of state — they never pick up. Instead suggest: ministry spokespeople, academic researchers, industry association reps, factory floor workers, NGO staff, affected residents, local business owners, or documents/data available online. Each suggestion must be traceable to a specific detail in this story. Output as plain bullet points only, no headers.>
 
@@ -104,6 +106,7 @@ Jerry feature: <Still as Jerry. Suggest exactly 3 bullet points for a longer inv
     zh_summary = ""
     international_cut = False
     international_reason = ""
+    why_read = ""
 
     # Multi-line field collector
     current_field = None
@@ -113,6 +116,7 @@ Jerry feature: <Still as Jerry. Suggest exactly 3 bullet points for a longer inv
     }
 
     FIELD_MARKERS = {
+        "Why Read:":                      "why_read_inline",
         "Significance:":                  "significance_inline",
         "Traditional Chinese Summary:":   "zh_inline",
         "International Cut:":             "intl_cut_inline",
@@ -151,7 +155,10 @@ Jerry feature: <Still as Jerry. Suggest exactly 3 bullet points for a longer inv
                 marker, field_key = matched_marker
                 rest = line[len(marker):].strip()
                 current_field = field_key
-                if field_key == "significance_inline":
+                if field_key == "why_read_inline":
+                    current_field = None
+                    why_read = rest
+                elif field_key == "significance_inline":
                     current_field = None
                     significance = rest
                 elif field_key == "zh_inline":
@@ -173,14 +180,15 @@ Jerry feature: <Still as Jerry. Suggest exactly 3 bullet points for a longer inv
     jerry_feature = " ".join(field_buffers["jerry_feature"]).strip()
 
     return {
-        "category":           category,
-        "headline":           headline or f"[{category}] {title}",
-        "significance":       significance,
-        "zh_summary":         zh_summary,
-        "international_cut":  international_cut,
+        "category":             category,
+        "headline":             headline or f"[{category}] {title}",
+        "why_read":             why_read,
+        "significance":         significance,
+        "zh_summary":           zh_summary,
+        "international_cut":    international_cut,
         "international_reason": international_reason,
-        "jerry_today":        jerry_today,
-        "jerry_feature":      jerry_feature,
+        "jerry_today":          jerry_today,
+        "jerry_feature":        jerry_feature,
         "formatted": (
             f"Story  {today}\n\n"
             f"{headline or f'[{category}] {title}'}\n\n"

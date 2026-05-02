@@ -419,6 +419,7 @@ def render_pitch(pitch, idx):
         display_headline = display_headline.replace(f"[{c}] ", "").replace(f"[{c}]", "")
 
     link = pitch.get("link", "#")
+    why_read = pitch.get("why_read", "")
     sig = pitch.get("significance", "")
     zh = pitch.get("zh_summary", "")
     source = pitch.get("source", "")
@@ -428,7 +429,22 @@ def render_pitch(pitch, idx):
     card_border = "#FFD700" if intl_cut else "#242424"
     card_bg = "#161400" if intl_cut else "#141414"
     intl_badge = '<span style="background:#FFD70022;color:#FFD700;font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-left:0.5rem;">⭐ International Cut</span>' if intl_cut else ""
-    intl_reason_html = f'<div style="font-size:0.8rem;color:#FFD700;opacity:0.85;margin-bottom:0.8rem;font-style:italic;">✦ {intl_reason}</div>' if intl_cut and intl_reason else ""
+    intl_reason_html = (
+        f'<div style="font-size:0.78rem;color:#FFD700;opacity:0.9;margin-bottom:0.9rem;'
+        f'line-height:1.6;">'
+        f'<span style="opacity:0.6;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;'
+        f'display:block;margin-bottom:0.2rem;">Taiwan connection &amp; audience hook</span>'
+        f'{intl_reason}</div>'
+    ) if intl_cut and intl_reason else ""
+
+    why_read_html = (
+        f'<div style="font-size:0.82rem;color:#5BC8F5;font-style:italic;'
+        f'margin-bottom:0.9rem;line-height:1.55;border-left:2px solid #1E4A6A;'
+        f'padding-left:0.75rem;">'
+        f'<span style="opacity:0.5;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;'
+        f'display:block;margin-bottom:0.2rem;font-style:normal;">Why read</span>'
+        f'{why_read}</div>'
+    ) if why_read else ""
 
     st.markdown(f"""
     <div class="pitch-card" style="background:{card_bg};border-color:{card_border};">
@@ -436,6 +452,7 @@ def render_pitch(pitch, idx):
       <div class="pitch-headline" style="margin-top:0.6rem;">
         <a href="{link}" target="_blank">{display_headline}</a>
       </div>
+      {why_read_html}
       {intl_reason_html}
       <div class="pitch-sig-label">Significance</div>
       <div class="pitch-sig">{sig}</div>
