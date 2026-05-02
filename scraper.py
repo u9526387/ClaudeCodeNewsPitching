@@ -18,6 +18,7 @@ KEYWORDS = [
     "立法院", "國防", "外交", "經濟", "兩岸", "國會", "關稅",
     "中國", "美國", "軍事", "台灣", "解放軍", "制裁", "貿易", "半導體",
     "移工", "原住民", "鄭麗文", "賴清德", "黃國昌", "九合一選舉",
+    "labor rights", "labour rights", "勞工", "勞權",
 ]
 
 # Stricter keyword set for Executive Yuan — excludes 行政院 so routine press releases don't pass
