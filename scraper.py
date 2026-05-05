@@ -86,7 +86,8 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9,zh-TW;q=0.8",
 }
 
-NOW_UTC = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+def _now_utc() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
 def _matches_keywords(text: str) -> bool:
@@ -128,7 +129,7 @@ def _make_story(title: str, link: str, source: str, summary: str = "") -> Option
         "link":      link,
         "summary":   summary,
         "source":    source,
-        "timestamp": NOW_UTC,
+        "timestamp": _now_utc(),
     }
 
 
@@ -146,7 +147,7 @@ def _fetch(url: str) -> Optional[BeautifulSoup]:
 
 def _scrape_google_news(query: str) -> list:
     encoded = requests.utils.quote(query)
-    url = f"https://news.google.com/rss/search?q={encoded}+when:2d&hl=en-US&gl=US&ceid=US:en"
+    url = f"https://news.google.com/rss/search?q={encoded}+when:1d&hl=en-US&gl=US&ceid=US:en"
     try:
         feed = feedparser.parse(url)
         stories = []
@@ -248,7 +249,7 @@ def _scrape_executive_yuan() -> list:
             continue
         stories.append({
             "title": title, "link": link,
-            "summary": "", "source": "Executive Yuan", "timestamp": NOW_UTC,
+            "summary": "", "source": "Executive Yuan", "timestamp": _now_utc(),
         })
     return stories
 

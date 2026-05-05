@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 CACHE_FILE = Path(__file__).parent / "pitch_cache.json"
-CACHE_TTL_DAYS = 7
+CACHE_TTL_DAYS = 1
 MAX_NEW_PER_RUN = 20
 
 OLLAMA_HOST = "http://localhost:11434"
